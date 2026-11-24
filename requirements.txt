@@ -4,5 +4,6 @@ gtfs-realtime-bindings
 numpy
 pandas
 pyarrow
+python-dotenv
 scipy
 uvicorn

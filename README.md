@@ -26,8 +26,10 @@ raw-JSON view.
 | `TECHNICAL_NOTE.md` | Detailed modelling, planner, live-feed, and limitation notes |
 | `VALIDATION_REPORT.md` | Held-out model results and Google Maps cross-check |
 
-The prebuilt model tables and GTFS files are included, so the API can be run
-without downloading the large raw GPS archive or rebuilding the model.
+The API requires the three model Parquet files in the project root and the
+required GTFS files in `gtfs/`. They are present in this working tree, so the
+raw GPS archive is not needed for a normal run. If a checkout is missing model
+tables, rebuild them using the instructions below.
 
 ## Quick start on Windows
 
@@ -78,7 +80,8 @@ Install the project's dependencies into that environment:
 
 The dependencies include FastAPI and Uvicorn for the API, DuckDB and PyArrow
 for Parquet/model data, Pandas and NumPy for data processing, SciPy for spatial
-search, and GTFS-Realtime protobuf bindings for the live feed.
+search, GTFS-Realtime protobuf bindings for the live feed, and python-dotenv
+for automatic `.env` loading.
 
 ### 3. Start the API and web page
 
@@ -100,11 +103,18 @@ The Leaflet map uses standard OpenStreetMap tiles and attribution; it does not
 need a Google Maps or other map-provider API key. The browser does need internet
 access to load the map library and map tiles.
 
+The `.env.example` file lists supported OTD settings for reference. If
+`python-dotenv` is installed, the app automatically loads a `.env` file from the
+project directory on startup. You can also set variables in the same PowerShell
+session that starts Uvicorn, as shown below.
+
 ## Using the journey planner
 
 1. Type part of a stop name in **Starting stop or location** or **Destination**.
    Matching stop names appear in a dropdown while typing. The search is
-   case-insensitive, matches text anywhere in the name, and shows all matches.
+   case-insensitive, matches text anywhere in the name, and returns results sorted
+   by relevance (exact matches first, then starts-with, then word-starts-with,
+   then substring). Results are capped at 25 for readability.
    A selected suggestion uses that stop's ID. You may also enter a `lat,lng`
    coordinate pair.
 2. Set a departure date and time, or leave the field at its current IST value.
@@ -114,8 +124,10 @@ access to load the map library and map tiles.
    components. Expand **View raw API JSON** to see the response returned by the
    API.
 4. On the map, the selected option is shown with a pulsing green start marker,
-   a pulsing red destination marker, and colored route lines. Blue dots are
-   live vehicle positions when the OTD feed is enabled.
+   a pulsing red destination marker, and colored GTFS route lines. If no
+   matching GTFS shape is available, the map draws a dashed approximate
+   stop-to-stop line. Blue dots are live vehicle positions when the OTD feed is
+   enabled.
 
 The displayed journey time is ride time plus walking time. The assumed wait
 for boarding is shown separately; it is not included in that total. The
@@ -222,7 +234,7 @@ but is not added to reported journey minutes.
 | `GET /` | Serves the Leaflet journey-planner page |
 | `GET /docs` | Interactive FastAPI documentation |
 | `GET /stops` | Returns GTFS stop IDs, names, and coordinates |
-| `GET /stops?search=ISBT` | Returns all matching stop names, exact name first and otherwise case-insensitive substring matches |
+| `GET /stops?search=ISBT` | Returns matching stop names sorted by relevance (exact, starts-with, word-starts-with, substring), capped at 25 |
 | `GET /live-status` | Reports whether live polling is disabled, collecting samples, active, or in error; never returns the API key |
 | `GET /live-vehicles?west=...&south=...&east=...&north=...` | Returns fresh vehicle positions within the requested map bounds; defaults to at most 1,500 results, with `limit` configurable up to 5,000 |
 | `POST /map-route-shapes` | Map support endpoint that returns GTFS route-shape coordinates for the bus legs in its JSON request |
@@ -230,6 +242,11 @@ but is not added to reported journey minutes.
 Live-vehicle bounds are longitude/latitude values: `west` and `east` are
 longitudes; `south` and `north` are latitudes. Vehicle positions older than
 three minutes are excluded from the map endpoint.
+
+The map uses `POST /map-route-shapes` to request shape segments for the bus
+legs it is drawing. Its request body is an object containing a `legs` array;
+each entry has `route_id`, `from_stop_id`, and `to_stop_id`. The response
+includes `[latitude, longitude]` coordinates and an `approximate` flag.
 
 ## Optional live bus data
 
@@ -264,9 +281,9 @@ The server refreshes vehicle positions every poll and the map refreshes visible
 markers every 30 seconds. Live speed estimates are calculated from successive
 positions for the same vehicle and route; the optional feed speed field is not
 used. A route needs at least three recent valid speed samples before it can
-adjust journey estimates. Live blending only applies to departures near the
-current time; otherwise the historical estimate is used. Current live traffic
-does not change the 14:00 quieter-hour comparison.
+adjust journey estimates. Live blending only applies to departures within 15
+minutes of the current time; otherwise the historical estimate is used. Current
+live traffic does not change the 14:00 quieter-hour comparison.
 
 ## How the historical model is built
 
@@ -336,7 +353,9 @@ python validation.py
 `process_day.py` writes `day_*.parquet` and `segments_*.parquet` files. Its
 optional second argument limits a test run to a sample of trips, for example
 `python process_day.py 2026_10_15 2000`; a sample is not a full training day.
-`build_model.py` writes the production speed tables and the `_loo_` fold tables.
+Before building, make sure all five full-day `segments_*.parquet` files exist.
+`build_model.py` uses the segment files it finds; missing days result in a
+partial model. It writes the production speed tables and the `_loo_` fold tables.
 `validation.py` writes `validation_loo_segments.csv`,
 `validation_journey.csv`, and `validation_fallbacks.csv`.
 
@@ -371,6 +390,9 @@ The validation report includes the individual pairs and timestamps.
 - Journey-window validation uses the same GPS processing pipeline and measures
   in-vehicle time; it does not validate real walking, waiting, or transfers.
 - Boarding wait is a fixed five-minute assumption, not derived from headways.
+- Journey distance is estimated from the planner's consecutive-stop graph and
+  walking links. It is useful for itinerary comparison but is not a surveyed
+  road-distance measurement.
 - Live speeds are route-level adjustments, not vehicle-to-stop arrival
   predictions. Without a configured key or enough recent samples, estimates
   remain historical.
