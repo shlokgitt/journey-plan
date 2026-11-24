@@ -1,74 +1,920 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Delhi Bus Journey Planner</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
-    #map { height: 65vh; }
-    .controls { padding: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-    input, button { font-size: 16px; padding: 8px; }
-    #result { padding: 12px; white-space: pre-wrap; }
+    :root {
+      color-scheme: light;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      color: #17241d;
+      background: #f2f6f3;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .page { max-width: 1500px; margin: 0 auto; padding: 28px; }
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+    .eyebrow {
+      margin: 0 0 7px;
+      color: #16804a;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); letter-spacing: -.04em; }
+    .subtitle { max-width: 680px; margin: 8px 0 0; color: #5a6a60; line-height: 1.5; }
+    .api-link {
+      flex: 0 0 auto;
+      padding: 10px 14px;
+      border: 1px solid #cbd9cf;
+      border-radius: 10px;
+      color: #17653d;
+      background: white;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .api-link:hover { border-color: #16804a; }
+
+    .search-card, .map-card, .results-card {
+      border: 1px solid #dfe8e1;
+      border-radius: 16px;
+      background: white;
+      box-shadow: 0 8px 28px rgba(28, 63, 42, .06);
+    }
+    .search-card { padding: 18px; margin-bottom: 16px; }
+    .search-grid {
+      display: grid;
+      grid-template-columns: minmax(210px, 1fr) minmax(210px, 1fr) minmax(190px, .7fr) auto;
+      gap: 14px;
+      align-items: end;
+    }
+    .field { position: relative; }
+    .field label { display: block; margin-bottom: 7px; color: #526258; font-size: 13px; font-weight: 700; }
+    .search-row { display: flex; gap: 7px; }
+    .stop-suggestions {
+      position: absolute;
+      z-index: 1200;
+      top: 68px;
+      right: 0;
+      left: 0;
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid #cbd9cf;
+      border-radius: 9px;
+      background: white;
+      box-shadow: 0 10px 24px rgba(20, 45, 28, .18);
+    }
+    .stop-suggestions[hidden] { display: none; }
+    .stop-suggestion {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 0;
+      border-bottom: 1px solid #edf1ed;
+      color: #26382c;
+      background: white;
+      text-align: left;
+    }
+    .stop-suggestion:last-child { border-bottom: 0; }
+    .stop-suggestion:hover, .stop-suggestion:focus { outline: none; background: #edf6ef; }
+    .stop-suggestion small { flex: 0 0 auto; color: #708077; font-size: 11px; }
+    .suggestion-empty { padding: 12px; color: #708077; font-size: 13px; }
+    input {
+      width: 100%;
+      min-width: 0;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid #cdd9d0;
+      border-radius: 9px;
+      color: #1b2b21;
+      background: #fff;
+    }
+    input:focus { outline: 3px solid rgba(22, 128, 74, .16); border-color: #16804a; }
+    .find-button {
+      flex: 0 0 auto;
+      padding: 0 12px;
+      border: 1px solid #cbd9cf;
+      border-radius: 9px;
+      color: #17653d;
+      background: #f7faf7;
+      font-weight: 700;
+    }
+    .find-button:hover { background: #edf6ef; }
+    .field-help { min-height: 17px; margin: 5px 0 0; color: #708077; font-size: 12px; }
+    .plan-button {
+      height: 44px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 9px;
+      color: white;
+      background: #16804a;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .plan-button:hover { background: #10683b; }
+    .plan-button:disabled { cursor: wait; opacity: .65; }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 44px;
+      margin-bottom: 16px;
+      padding: 9px 13px;
+      border: 1px solid #dfe8e1;
+      border-radius: 11px;
+      color: #4a5a50;
+      background: #fff;
+      font-size: 13px;
+    }
+    .status-dot, .legend-dot { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }
+    .status-dot { background: #e3a72f; }
+    .status-dot.active { background: #1d9a5b; }
+    .status-dot.error { background: #c74747; }
+    .status-note { margin-left: auto; color: #78877e; font-size: 12px; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, .85fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .map-card {
+      position: relative;
+      overflow: hidden;
+      border-color: #303b34;
+      background: #1d2420;
+    }
+    .card-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 17px;
+      border-bottom: 1px solid #edf1ed;
+    }
+    .map-card .card-heading { border-color: #303b34; background: #202824; }
+    .map-card .card-heading h2 { color: #eef4ef; }
+    .card-heading h2 { margin: 0; font-size: 16px; }
+    .map-help { color: #75837a; font-size: 12px; }
+    .map-card .map-help { color: #a7b3aa; }
+    #map { height: min(68vh, 690px); min-height: 440px; background: #171d1a; }
+    .map-legend {
+      position: absolute;
+      z-index: 500;
+      bottom: 14px;
+      left: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      max-width: calc(100% - 28px);
+      padding: 10px 13px;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 9px;
+      color: #e4ece6;
+      background: rgba(25, 32, 28, .9);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .28);
+      font-size: 12px;
+    }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+    .legend-dot.origin { background: #159957; }
+    .legend-dot.destination { background: #d84a4a; }
+    .legend-dot.vehicle { background: #1688e8; }
+    .legend-line { width: 18px; height: 3px; border-radius: 2px; background: #56b5ff; }
+    .map-card .leaflet-control-zoom a {
+      border-color: #435047;
+      color: #eff5f0;
+      background: #202824;
+    }
+    .map-card .leaflet-control-zoom a:hover { background: #344139; }
+    .map-card .leaflet-control-attribution { color: #d4ddd6; background: rgba(25, 32, 28, .78); }
+    .map-card .leaflet-control-attribution a { color: #8fc9fa; }
+    .map-card .leaflet-tile-pane {
+      filter: brightness(.6) invert(1) contrast(3) hue-rotate(200deg) saturate(.35) brightness(.7);
+    }
+    .map-point-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+    }
+    .map-pulse {
+      position: relative;
+      display: block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px currentColor;
+    }
+    .map-pulse::after {
+      position: absolute;
+      inset: -9px;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+      content: '';
+      animation: map-pulse-out 1.7s ease-out infinite;
+    }
+    .map-pulse.origin { color: #159957; background: #159957; }
+    .map-pulse.destination { color: #d84a4a; background: #d84a4a; }
+    @keyframes map-pulse-out {
+      from { transform: scale(.55); opacity: .8; }
+      to { transform: scale(1.65); opacity: 0; }
+    }
+
+    .results-card { min-height: 500px; overflow: hidden; }
+    .results-content { max-height: 720px; overflow-y: auto; padding: 15px; }
+    .empty-state {
+      display: grid;
+      min-height: 310px;
+      place-content: center;
+      padding: 24px;
+      color: #69786e;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .empty-state strong { display: block; margin-bottom: 6px; color: #26382c; font-size: 17px; }
+    .journey-option {
+      margin-bottom: 13px;
+      padding: 15px;
+      border: 1px solid #e1e9e3;
+      border-radius: 13px;
+      background: #fff;
+    }
+    .option-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .option-title { margin: 0; color: #526258; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .option-time { color: #17653d; font-size: 25px; font-weight: 850; letter-spacing: -.04em; white-space: nowrap; }
+    .option-time small { color: #688073; font-size: 13px; font-weight: 600; letter-spacing: 0; }
+    .option-summary { margin: 5px 0 0; color: #56665c; font-size: 13px; line-height: 1.5; }
+    .journey-facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 12px 0;
+    }
+    .fact {
+      padding: 5px 8px;
+      border-radius: 7px;
+      color: #3e5547;
+      background: #f0f5f1;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .wait-fact { color: #72551e; background: #fff6df; }
+    .live-fact { color: #005fb8; background: #e8f4fd; border: 1px solid #b8dcfa; font-weight: 700; }
+    .leg-live { margin-top: 4px; color: #005fb8; font-size: 11.5px; font-weight: 600; }
+    .leg-list { display: grid; gap: 8px; }
+    .journey-leg {
+      position: relative;
+      padding: 10px 11px 10px 14px;
+      border-left: 3px solid #16804a;
+      border-radius: 0 8px 8px 0;
+      background: #f7faf7;
+    }
+    .journey-leg.walk { border-left-color: #929e96; }
+    .leg-heading { margin: 0 0 4px; color: #33443a; font-size: 13px; font-weight: 800; }
+    .leg-route { color: #516158; font-size: 12px; line-height: 1.45; }
+    .leg-meta { margin-top: 5px; color: #17653d; font-size: 12px; font-weight: 700; }
+    .quiet-comparison {
+      margin-top: 11px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      color: #46564c;
+      background: #f1f5fb;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    details.raw-json { margin-top: 12px; border-top: 1px solid #edf1ed; padding-top: 10px; }
+    details.raw-json summary { color: #54705d; cursor: pointer; font-size: 12px; font-weight: 700; }
+    details.raw-json pre {
+      max-height: 300px;
+      overflow: auto;
+      padding: 10px;
+      border-radius: 8px;
+      color: #dbe8dd;
+      background: #1f2c23;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .error-message { padding: 14px; border-radius: 10px; color: #9b2828; background: #fff0ef; }
+    .footnote { margin: 16px 2px 0; color: #75837a; font-size: 12px; line-height: 1.5; }
+
+    @media (max-width: 1050px) {
+      .search-grid { grid-template-columns: 1fr 1fr; }
+      .workspace { grid-template-columns: 1fr; }
+      #map { height: 55vh; }
+      .results-content { max-height: none; }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 17px 12px; }
+      .masthead { align-items: flex-start; }
+      .api-link { padding: 9px 10px; font-size: 12px; }
+      .search-grid { grid-template-columns: 1fr; }
+      .search-card { padding: 13px; }
+      .status-note { display: none; }
+      #map { min-height: 360px; height: 48vh; }
+      .map-help { display: none; }
+    }
   </style>
 </head>
 <body>
-  <div class="controls">
-    <select id="from">
-      <option value="">Select starting stop</option>
-    </select>
-    <select id="to">
-      <option value="">Select destination stop</option>
-    </select>
-    <input id="depart" type="datetime-local">
-    <button onclick="plan()">Plan journey</button>
-  </div>
-  <div id="map"></div>
-  <pre id="result"></pre>
+  <main class="page">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Delhi · Bus travel-time model</p>
+        <h1>Plan a bus journey</h1>
+        <p class="subtitle">Compare estimated bus routes using observed Delhi bus GPS patterns. Live bus positions appear on the map when the OTD feed is enabled.</p>
+      </div>
+      <a class="api-link" href="/docs">API documentation ↗</a>
+    </header>
+
+    <form class="search-card" id="journey-form">
+      <div class="search-grid">
+        <div class="field">
+          <label for="from">Starting stop or location</label>
+          <div class="search-row">
+            <input id="from" name="from" autocomplete="off" aria-autocomplete="list" aria-controls="from-suggestions" placeholder="Type a stop name or lat,lng" required>
+            <button class="find-button" type="button" onclick="searchStops('from')">Find</button>
+          </div>
+          <div class="stop-suggestions" id="from-suggestions" role="listbox" hidden></div>
+          <p class="field-help" id="from-help">Search by stop name, or enter coordinates.</p>
+        </div>
+        <div class="field">
+          <label for="to">Destination</label>
+          <div class="search-row">
+            <input id="to" name="to" autocomplete="off" aria-autocomplete="list" aria-controls="to-suggestions" placeholder="Type a destination or lat,lng" required>
+            <button class="find-button" type="button" onclick="searchStops('to')">Find</button>
+          </div>
+          <div class="stop-suggestions" id="to-suggestions" role="listbox" hidden></div>
+          <p class="field-help" id="to-help">Matching stop names will appear as suggestions.</p>
+        </div>
+        <div class="field">
+          <label for="depart">Departure time (IST)</label>
+          <input id="depart" name="depart" type="datetime-local">
+          <p class="field-help">Times without a timezone are treated as India time.</p>
+        </div>
+        <button class="plan-button" id="plan-button" type="submit">Find journeys</button>
+      </div>
+    </form>
+
+    <div class="status-row" role="status" aria-live="polite">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="live-status">Checking live bus feed...</span>
+      <span class="status-note">Bus travel times use historical GPS, adjusted by live speeds when available.</span>
+    </div>
+
+    <section class="workspace" aria-label="Map and journey options">
+      <section class="map-card">
+        <div class="card-heading">
+          <h2>Delhi bus map</h2>
+          <span class="map-help">Move or zoom to refresh visible buses</span>
+        </div>
+        <div id="map" aria-label="Map showing the journey and live bus positions"></div>
+        <div class="map-legend">
+          <span class="legend-item"><span class="legend-dot origin"></span>Start</span>
+          <span class="legend-item"><span class="legend-dot destination"></span>Destination</span>
+          <span class="legend-item"><span class="legend-line"></span>Bus route</span>
+          <span class="legend-item"><span class="legend-dot vehicle"></span>Live bus</span>
+        </div>
+      </section>
+
+      <section class="results-card" aria-labelledby="results-heading">
+        <div class="card-heading">
+          <h2 id="results-heading">Journey options</h2>
+          <span class="map-help" id="result-count"></span>
+        </div>
+        <div class="results-content" id="results">
+          <div class="empty-state">
+            <div><strong>Where would you like to go?</strong>Choose a starting point and destination to compare bus routes, walking distance, and estimated time.</div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <p class="footnote">Journey time shown is estimated bus time plus walking time. Assumed boarding wait is displayed separately and is not included in that total. Live vehicle dots show the latest positions received from the feed; they are not arrival predictions.</p>
+  </main>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const map = L.map('map').setView([28.6139, 77.2090], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+    const journeyLayer = L.layerGroup().addTo(map);
+    const liveVehicleLayer = L.layerGroup().addTo(map);
+    let stops = [];
+    let stopsById = new Map();
+    let loadingVehicles = false;
+    let reloadVehiclesAfterRequest = false;
+    let stopsPromise;
+    const stopSearchTimers = new Map();
+    const stopSearchControllers = new Map();
+
+    function makeTextElement(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      element.textContent = text;
+      return element;
+    }
+
+    function formatDistance(metres) {
+      if (!Number.isFinite(metres)) return 'Distance unavailable';
+      if (metres >= 1000) return `${(metres / 1000).toFixed(1)} km`;
+      return `${Math.round(metres)} m`;
+    }
+
+    function optionDistances(option) {
+      const legs = option.legs || [];
+      const sumLegDistances = mode => {
+        const selected = legs.filter(leg => leg.type === mode);
+        if (!selected.length) return 0;
+        if (!selected.every(leg => Number.isFinite(leg.distance_m))) return null;
+        return selected.reduce((sum, leg) => sum + leg.distance_m, 0);
+      };
+      const ride = Number.isFinite(option.ride_distance_m)
+        ? option.ride_distance_m
+        : sumLegDistances('ride');
+      const walk = Number.isFinite(option.walk_distance_m)
+        ? option.walk_distance_m
+        : sumLegDistances('walk');
+      const total = Number.isFinite(option.total_distance_m)
+        ? option.total_distance_m
+        : ride !== null && walk !== null
+          ? ride + walk
+          : null;
+      return {ride, walk, total};
+    }
 
     async function loadStops() {
-      const data = await fetch('/stops').then(r => r.json());
-      for (const selectId of ['from', 'to']) {
-        const select = document.querySelector('#' + selectId);
+      const response = await fetch('/stops');
+      if (!response.ok) throw new Error(`Could not load stops (HTTP ${response.status})`);
+      const data = await response.json();
+      stops = data.stops;
+      stopsById = new Map(stops.map(stop => [String(stop.stop_id), stop]));
+    }
+
+    async function searchStops(fieldId) {
+      const input = document.getElementById(fieldId);
+      const help = document.getElementById(`${fieldId}-help`);
+      const list = document.getElementById(`${fieldId}-suggestions`);
+      const query = input.value.trim();
+      if (!query) {
+        help.textContent = 'Type part of a stop name first.';
+        list.replaceChildren();
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      if (query.includes(',')) {
+        help.textContent = 'Coordinate locations are accepted directly; stop search is for names.';
+        list.replaceChildren();
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      stopSearchControllers.get(fieldId)?.abort();
+      const controller = new AbortController();
+      stopSearchControllers.set(fieldId, controller);
+      list.replaceChildren();
+      list.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      help.textContent = 'Searching stop names...';
+      try {
+        const params = new URLSearchParams({search: query});
+        const response = await fetch('/stops?' + params, {signal: controller.signal});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (input.value.trim() !== query) return;
+        list.replaceChildren();
         for (const stop of data.stops) {
-          const option = document.createElement('option');
-          option.value = stop.stop_id;
-          option.textContent = `${stop.stop_name} (${stop.stop_id})`;
-          select.appendChild(option);
+          const option = document.createElement('button');
+          option.type = 'button';
+          option.className = 'stop-suggestion';
+          option.setAttribute('role', 'option');
+          option.appendChild(makeTextElement('span', '', stop.stop_name));
+          option.appendChild(makeTextElement('small', '', `Stop ${stop.stop_id}`));
+          option.addEventListener('mousedown', event => event.preventDefault());
+          option.addEventListener('click', () => {
+            input.value = stop.stop_name;
+            input.dataset.stopId = String(stop.stop_id);
+            list.hidden = true;
+            input.setAttribute('aria-expanded', 'false');
+            help.textContent = `Selected ${stop.stop_name} (stop ${stop.stop_id}).`;
+          });
+          list.appendChild(option);
+        }
+        if (!data.stops.length) {
+          list.appendChild(makeTextElement('div', 'suggestion-empty', 'No matching stop names.'));
+        }
+        list.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+        if (data.total_matches) {
+          const suffix = data.truncated ? ` (showing top ${data.count})` : '';
+          help.textContent = `${data.total_matches} matching stop${data.total_matches === 1 ? '' : 's'} found${suffix}. Keep typing to narrow down.`;
+        } else {
+          help.textContent = 'Try a different spelling or enter coordinates.';
+        }
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+        help.textContent = `Stop search failed: ${error.message}`;
+      }
+    }
+
+    for (const fieldId of ['from', 'to']) {
+      const input = document.getElementById(fieldId);
+      const list = document.getElementById(`${fieldId}-suggestions`);
+      input.addEventListener('input', () => {
+        delete input.dataset.stopId;
+        clearTimeout(stopSearchTimers.get(fieldId));
+        list.replaceChildren();
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        if (!input.value.trim() || input.value.includes(',')) {
+          return;
+        }
+        stopSearchTimers.set(fieldId, setTimeout(() => searchStops(fieldId), 220));
+      });
+      input.addEventListener('keydown', event => {
+        if (event.key === 'ArrowDown' && !list.hidden) {
+          const firstOption = list.querySelector('.stop-suggestion');
+          if (firstOption) {
+            event.preventDefault();
+            firstOption.focus();
+          }
+        } else if (event.key === 'Escape') {
+          list.hidden = true;
+          input.setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('click', event => {
+        if (!event.target.closest(`#${fieldId}-suggestions`) && event.target !== input) {
+          list.hidden = true;
+          input.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    async function loadLiveVehicles() {
+      if (loadingVehicles) {
+        reloadVehiclesAfterRequest = true;
+        return;
+      }
+      loadingVehicles = true;
+      try {
+        const bounds = map.getBounds();
+        const params = new URLSearchParams({
+          west: bounds.getWest(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          north: bounds.getNorth()
+        });
+        const response = await fetch('/live-vehicles?' + params);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        liveVehicleLayer.clearLayers();
+        for (const vehicle of data.vehicles) {
+          const marker = L.circleMarker(
+            [vehicle.latitude, vehicle.longitude],
+            {radius: 5, color: '#0645ad', fillColor: '#1688e8', fillOpacity: 0.9, weight: 2}
+          );
+          const popup = document.createElement('div');
+          popup.textContent =
+            `Vehicle ${vehicle.vehicle_id} · Route ${vehicle.route_id || 'unknown'} · ` +
+            `${new Date(vehicle.timestamp * 1000).toLocaleTimeString()}`;
+          marker.bindPopup(popup);
+          liveVehicleLayer.addLayer(marker);
+        }
+      } catch (error) {
+        console.error('Could not load live vehicles:', error);
+      } finally {
+        loadingVehicles = false;
+        if (reloadVehiclesAfterRequest) {
+          reloadVehiclesAfterRequest = false;
+          loadLiveVehicles();
         }
       }
     }
 
-    async function plan() {
-      if (!document.querySelector('#from').value || !document.querySelector('#to').value) {
-        document.querySelector('#result').textContent = 'Please select both a starting stop and a destination stop.';
-        return;
-      }
-      const params = new URLSearchParams({
-        from: document.querySelector('#from').value,
-        to: document.querySelector('#to').value,
-        depart: document.querySelector('#depart').value
-      });
-      const response = await fetch('/journeys?' + params);
-      const data = await response.json();
-      document.querySelector('#result').textContent = JSON.stringify(data, null, 2);
-      if (!response.ok) return;
-      const stops = await fetch('/stops').then(r => r.ok ? r.json() : {stops: []});
-      map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
-      for (const stopId of [data.options[0].stops[0], data.options[0].stops.at(-1)]) {
-        const s = stops.stops.find(x => String(x.stop_id) === String(stopId));
-        if (s) L.marker([s.stop_lat, s.stop_lon]).addTo(map);
+    async function loadLiveStatus() {
+      const label = document.getElementById('live-status');
+      const dot = document.getElementById('status-dot');
+      try {
+        const response = await fetch('/live-status');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const status = await response.json();
+        dot.className = 'status-dot';
+        if (!status.enabled) {
+          label.textContent = 'Live feed is off; journey estimates use historical data.';
+        } else if (status.state === 'active') {
+          dot.classList.add('active');
+          label.textContent = `Live feed active · speed samples for ${status.routes_with_speed_estimates} routes.`;
+        } else if (status.state === 'error') {
+          dot.classList.add('error');
+          label.textContent = `Live feed error: ${status.error}. Historical estimates remain available.`;
+        } else {
+          label.textContent = 'Live feed connected · collecting samples before blending.';
+        }
+      } catch (error) {
+        dot.className = 'status-dot error';
+        label.textContent = `Live feed status unavailable: ${error.message}`;
       }
     }
 
-    loadStops();
+    function addJourneyMarker(stop, markerClass, label) {
+      if (!stop) return;
+      const marker = L.marker([stop.stop_lat, stop.stop_lon], {
+        icon: L.divIcon({
+          className: 'map-point-icon',
+          html: `<span class="map-pulse ${markerClass}"></span>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        }),
+          zIndexOffset: 1000
+      });
+      const popup = document.createElement('div');
+      popup.textContent = `${label}: ${stop.stop_name}`;
+      marker.bindPopup(popup);
+      journeyLayer.addLayer(marker);
+    }
+
+    async function showJourneyOnMap(option) {
+      journeyLayer.clearLayers();
+      const rideLegs = (option.legs || []).filter(leg => leg.type === 'ride');
+      if (!rideLegs.length) return;
+      const firstRide = rideLegs[0];
+      const lastRide = rideLegs[rideLegs.length - 1];
+      const start = stopsById.get(String(firstRide.board_stop_id)) ||
+        stops.find(stop => stop.stop_name === firstRide.board_stop);
+      const end = stopsById.get(String(lastRide.alight_stop_id)) ||
+        stops.find(stop => stop.stop_name === lastRide.alight_stop);
+      const boundsPoints = [];
+      const colors = ['#45b7ff', '#ffb547', '#c783ff', '#54d69a'];
+      try {
+        const response = await fetch('/map-route-shapes', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            legs: rideLegs.map(leg => ({
+              route_id: leg.route_id,
+              from_stop_id: leg.board_stop_id,
+              to_stop_id: leg.alight_stop_id
+            }))
+          })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        for (const [index, route] of data.routes.entries()) {
+          const color = colors[index % colors.length];
+          const line = L.polyline(route.coordinates, {
+            color,
+            weight: 5,
+            opacity: 0.94,
+            dashArray: route.approximate ? '8 8' : null,
+            lineCap: 'round',
+            lineJoin: 'round'
+          });
+          const popup = document.createElement('div');
+          popup.textContent = `Bus ${rideLegs[index].route_short_name}` +
+            (route.approximate ? ' · approximate stop-to-stop line' : ' · GTFS route shape');
+          line.bindPopup(popup);
+          journeyLayer.addLayer(line);
+          boundsPoints.push(...line.getLatLngs());
+        }
+      } catch (error) {
+        console.error('Could not draw the GTFS bus route:', error);
+        rideLegs.forEach((leg, index) => {
+          const routeStart = stopsById.get(String(leg.board_stop_id)) ||
+            stops.find(stop => stop.stop_name === leg.board_stop);
+          const routeEnd = stopsById.get(String(leg.alight_stop_id)) ||
+            stops.find(stop => stop.stop_name === leg.alight_stop);
+          if (!routeStart || !routeEnd) return;
+          const line = L.polyline(
+            [
+              [routeStart.stop_lat, routeStart.stop_lon],
+              [routeEnd.stop_lat, routeEnd.stop_lon]
+            ],
+            {
+              color: colors[index % colors.length],
+              weight: 4,
+              opacity: 0.85,
+              dashArray: '7 8'
+            }
+          );
+          const popup = document.createElement('div');
+          popup.textContent = `Bus ${leg.route_short_name} · approximate stop-to-stop line`;
+          line.bindPopup(popup);
+          journeyLayer.addLayer(line);
+          boundsPoints.push(...line.getLatLngs());
+        });
+      }
+      addJourneyMarker(start, 'origin', 'Start');
+      addJourneyMarker(end, 'destination', 'Destination');
+      if (start) boundsPoints.push([start.stop_lat, start.stop_lon]);
+      if (end) boundsPoints.push([end.stop_lat, end.stop_lon]);
+      if (boundsPoints.length > 1) {
+        map.fitBounds(L.latLngBounds(boundsPoints).pad(0.16), {maxZoom: 13});
+      } else if (start || end) {
+        const stop = start || end;
+        map.setView([stop.stop_lat, stop.stop_lon], 14);
+      }
+    }
+
+    function renderLeg(leg) {
+      const isRide = leg.type === 'ride';
+      const item = makeTextElement('div', `journey-leg${isRide ? '' : ' walk'}`, '');
+      if (isRide) {
+        item.appendChild(makeTextElement('p', 'leg-heading', `Bus ${leg.route_short_name}`));
+        item.appendChild(makeTextElement('div', 'leg-route', `${leg.board_stop} → ${leg.alight_stop}`));
+        const wait = Number(leg.boarding_wait_minutes || 0);
+        const meta = `${formatDistance(leg.distance_m)} · ${Number(leg.ride_minutes).toFixed(1)} min ride` +
+          (wait > 0 ? ` · ${wait.toFixed(0)} min assumed wait` : '');
+        item.appendChild(makeTextElement('div', 'leg-meta', meta));
+        if (leg.live_adjustment) {
+          const adj = leg.live_adjustment;
+          const liveText = `⚡ Live speed: ${adj.live_speed_kmh} km/h (hist: ${adj.historical_speed_kmh} km/h, blend: ${(adj.blend_weight * 100).toFixed(0)}%)`;
+          item.appendChild(makeTextElement('div', 'leg-live', liveText));
+        }
+      } else {
+        const title = leg.purpose === 'to_first_stop'
+          ? 'Walk to your first stop'
+          : leg.purpose === 'from_last_stop'
+            ? 'Walk from your last stop'
+            : 'Walk to transfer stop';
+        item.appendChild(makeTextElement('p', 'leg-heading', title));
+        item.appendChild(makeTextElement('div', 'leg-route', `${leg.from} → ${leg.to}`));
+        item.appendChild(makeTextElement(
+          'div',
+          'leg-meta',
+          `${formatDistance(leg.distance_m)} · ${Number(leg.minutes).toFixed(1)} min walk`
+        ));
+      }
+      return item;
+    }
+
+    function renderOption(option, index) {
+      const card = makeTextElement('article', 'journey-option', '');
+      const distances = optionDistances(option);
+      const top = makeTextElement('div', 'option-top', '');
+      const heading = makeTextElement('div', '', '');
+      heading.appendChild(makeTextElement('p', 'option-title', `Option ${index + 1}`));
+      const transfers = Number(option.transfer_count || 0);
+      heading.appendChild(makeTextElement(
+        'p',
+        'option-summary',
+        `${transfers} transfer${transfers === 1 ? '' : 's'} · ${formatDistance(distances.total)} total`
+      ));
+      top.appendChild(heading);
+      const minutes = Number(option.total_minutes ?? option.minutes);
+      const time = makeTextElement('div', 'option-time', `${minutes.toFixed(1)} `);
+      time.appendChild(makeTextElement('small', '', 'min'));
+      top.appendChild(time);
+      card.appendChild(top);
+
+      const facts = makeTextElement('div', 'journey-facts', '');
+      facts.appendChild(makeTextElement('span', 'fact', `Bus ${formatDistance(distances.ride)}`));
+      facts.appendChild(makeTextElement('span', 'fact', `Walk ${formatDistance(distances.walk)}`));
+      facts.appendChild(makeTextElement(
+        'span',
+        'fact wait-fact',
+        `Assumed wait +${Number(option.wait_estimate_minutes || 0).toFixed(0)} min`
+      ));
+      if (option.live_blend_usage && option.live_blend_usage.segments_adjusted > 0) {
+        const segCount = option.live_blend_usage.segments_adjusted;
+        facts.appendChild(makeTextElement(
+          'span',
+          'fact live-fact',
+          `⚡ Real-time data blended (${segCount} segment${segCount === 1 ? '' : 's'})`
+        ));
+      }
+      card.appendChild(facts);
+
+      const legs = makeTextElement('div', 'leg-list', '');
+      for (const leg of option.legs || []) legs.appendChild(renderLeg(leg));
+      card.appendChild(legs);
+
+      if (option.quieter_hour_comparison) {
+        const quiet = option.quieter_hour_comparison;
+        card.appendChild(makeTextElement(
+          'div',
+          'quiet-comparison',
+          `${quiet.label}: ${Number(quiet.minutes).toFixed(1)} min (same route, historical estimate)`
+        ));
+      }
+      return card;
+    }
+
+    function renderJourney(data) {
+      const results = document.getElementById('results');
+      const count = document.getElementById('result-count');
+      results.replaceChildren();
+      count.textContent = `${data.options.length} option${data.options.length === 1 ? '' : 's'}`;
+      if (!data.options.length) {
+        results.appendChild(makeTextElement(
+          'div',
+          'empty-state',
+          'No bus journeys were found for these locations and departure time.'
+        ));
+        return;
+      }
+      if (data.options.some(option => optionDistances(option).ride === null)) {
+        results.appendChild(makeTextElement(
+          'div',
+          'error-message',
+          'The running server is an older build and does not return bus distances or GTFS map routes. Restart Uvicorn from the project folder to load the updated API.'
+        ));
+      }
+      data.options.forEach((option, index) => results.appendChild(renderOption(option, index)));
+      const details = makeTextElement('details', 'raw-json', '');
+      details.appendChild(makeTextElement('summary', '', 'View raw API JSON'));
+      details.appendChild(makeTextElement('pre', '', JSON.stringify(data, null, 2)));
+      results.appendChild(details);
+    }
+
+    async function plan() {
+      const fromInput = document.getElementById('from');
+      const toInput = document.getElementById('to');
+      const from = fromInput.dataset.stopId || fromInput.value.trim();
+      const to = toInput.dataset.stopId || toInput.value.trim();
+      const depart = document.getElementById('depart').value || 'now';
+      const button = document.getElementById('plan-button');
+      const results = document.getElementById('results');
+      if (!from || !to) {
+        results.replaceChildren(makeTextElement(
+          'div',
+          'error-message',
+          'Enter both a starting location and a destination.'
+        ));
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Finding routes...';
+      results.replaceChildren(makeTextElement('div', 'empty-state', 'Calculating bus options...'));
+      try {
+        await stopsPromise;
+        const params = new URLSearchParams({from, to, depart});
+        const response = await fetch('/journeys?' + params);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || `Journey search failed (HTTP ${response.status})`);
+        }
+        renderJourney(data);
+        if (data.options.length) showJourneyOnMap(data.options[0]);
+      } catch (error) {
+        results.replaceChildren(makeTextElement('div', 'error-message', error.message));
+        document.getElementById('result-count').textContent = '';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Find journeys';
+      }
+    }
+
+    document.getElementById('journey-form').addEventListener('submit', event => {
+      event.preventDefault();
+      plan();
+    });
+
+    const istNow = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).format(new Date());
+    document.getElementById('depart').value = istNow.replace(' ', 'T');
+
+    stopsPromise = loadStops();
+    stopsPromise.catch(error => {
+      document.getElementById('from-help').textContent = error.message;
+      document.getElementById('to-help').textContent = error.message;
+    });
+    loadLiveStatus();
+    loadLiveVehicles();
+    map.on('moveend', loadLiveVehicles);
+    setInterval(loadLiveStatus, 15000);
+    setInterval(loadLiveVehicles, 30000);
   </script>
 </body>
 </html>

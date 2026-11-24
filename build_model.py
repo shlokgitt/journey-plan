@@ -55,23 +55,35 @@ def build_tables(con, output_tag, held_out=None):
                  quantile_cont(seg_s, 0.75) AS p75_s,
                  3.6 * sum(seg_m) / sum(seg_s) AS kmh_weighted
           FROM all_segments
-          WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 7200
-            AND 3.6 * seg_m / seg_s <= 80
+          WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 900
+            AND 3.6 * seg_m / seg_s BETWEEN 2 AND 80
           GROUP BY route_id, from_stop, to_stop, day_type, 5
+          HAVING count(*) >= 3
         ) TO '{exact_path.replace(chr(92), chr(47))}' (FORMAT PARQUET, COMPRESSION ZSTD)
         """)
 
     con.execute(
         f"""
         COPY (
-          SELECT route_id, day_type,
-                 CAST(floor((t_from + 19800) / 3600) % 24 AS INTEGER) AS hour_ist,
+          WITH hourly AS (
+            SELECT route_id, day_type,
+                   CAST(floor((t_from + 19800) / 3600) % 24 AS INTEGER) AS hour_ist,
+                   count(*) AS n, sum(seg_m) AS sum_m, sum(seg_s) AS sum_s,
+                   3.6 * sum(seg_m) / sum(seg_s) AS kmh_weighted
+            FROM all_segments
+            WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 900
+              AND 3.6 * seg_m / seg_s BETWEEN 2 AND 80
+            GROUP BY route_id, day_type, 3
+          )
+          SELECT * FROM hourly
+          UNION ALL
+          SELECT route_id, 'all' AS day_type, -1 AS hour_ist,
                  count(*) AS n, sum(seg_m) AS sum_m, sum(seg_s) AS sum_s,
                  3.6 * sum(seg_m) / sum(seg_s) AS kmh_weighted
           FROM all_segments
-          WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 7200
-            AND 3.6 * seg_m / seg_s <= 80
-          GROUP BY route_id, day_type, 3
+          WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 900
+            AND 3.6 * seg_m / seg_s BETWEEN 2 AND 80
+          GROUP BY route_id
         ) TO '{route_path.replace(chr(92), chr(47))}' (FORMAT PARQUET, COMPRESSION ZSTD)
         """)
 
@@ -81,11 +93,13 @@ def build_tables(con, output_tag, held_out=None):
           WITH hourly AS (
             SELECT route_id,
                    CAST(floor((t_from + 19800) / 3600) % 24 AS INTEGER) AS hour_ist,
+                   count(*) AS n,
                    3.6 * sum(seg_m) / sum(seg_s) AS kmh_weighted
             FROM all_segments
-            WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 7200
-              AND 3.6 * seg_m / seg_s <= 80
+            WHERE seg_s >= 5 AND seg_m > 0 AND seg_s <= 900
+              AND 3.6 * seg_m / seg_s BETWEEN 2 AND 80
             GROUP BY route_id, 2
+            HAVING count(*) >= 50
           )
           SELECT route_id,
                  quantile_cont(kmh_weighted, 0.85) AS freeflow_kmh,

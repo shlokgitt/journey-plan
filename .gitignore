@@ -6,5 +6,11 @@ segments_*.parquet
 *.zip
 __pycache__/
 .venv/
+.env
+*.cred
 gtfs/__MACOSX/
 gtfs/stop_times.txt
+/*.parquet
+!/speed_table.parquet
+!/speed_route_table.parquet
+!/speed_freeflow_table.parquet

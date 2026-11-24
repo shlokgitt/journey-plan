@@ -1,55 +1,98 @@
-# Technical note
+# Technical Note: Delhi Bus Travel-Time Model
 
-## Data and snapping
+## GPS-to-route linking
 
-GPS pings are matched to route shapes and projected onto cumulative shape distance. The shape with the smallest median ping distance is selected. Stops are projected onto the same shape and ping times are linearly interpolated between adjacent pings.
+The October 2026 GPS archive contains bus pings with GPS trip IDs that do not
+match the trip IDs in the 2024 static GTFS. Pings are therefore grouped by GPS
+trip and matched against the GTFS shapes available for their route. The selected
+shape is the one with the smallest median ping-to-shape distance. Trips without
+a suitable shape or enough on-route pings are skipped.
 
-The GPS `speed` field is not used. Segment distance is shape distance; segment time is the difference between projected stop passage times.
+The GPS `speed` field is not used because it did not agree reliably with
+speed calculated from positions and timestamps. Each ping is projected onto
+cumulative shape distance. GTFS stops are projected onto the same shape, and
+the time of passage at each stop is interpolated between adjacent on-route
+pings. Differences between consecutive stop passage times form the observed
+stretch times.
 
-## Model
+## Per-stretch travel-time model
 
-The model aggregates `sum(segment metres) / sum(segment seconds)` by stop pair, day type, and IST hour. It stores count, median/p25/p75 segment time, and weighted speed. Segment observations shorter than 5 seconds, longer than 80 km/h, or part of a ping gap over 60 seconds are not included.
+Travel time is aggregated by route, directed stop pair, day type, and IST hour.
+The model stores sample counts and weighted distance/time totals. Exact-hour
+and nearby-hour estimates require at least three observations. Training
+observations shorter than 5 seconds, longer than 900 seconds, below 2 km/h, or
+above 80 km/h are excluded. The free-flow speed is the 85th percentile of
+route-hour weighted speeds, using only route-hours with at least 50 observations.
 
-Sparse fallbacks are, in order: exact stop-pair and hour; neighbouring hours; route-wide hour average; stop-distance/free-flow estimate. The free-flow estimate uses the route's 85th-percentile hourly weighted speed. This fallback list is implemented in `app.py`.
+The planner fallback sequence is exact hour, nearby hours, the other weekend
+day as a labelled proxy, route-hour average, a flat per-route average, then a
+free-flow estimate. The free-flow fallback uses 1.3 times the straight-line
+stop distance to approximate road distance.
 
-## Known limitations
+## Journey planner
 
-The static GTFS is from 2024; GPS is from October 2026. Some routes and stops may not match. Dwell is included in stop-to-stop segment time. The representative stop sequence comes from the longest trip on each shape; short-turn trips may omit stops. About 10% of GPS trips are currently skipped. The model is trained from 5 October 2026 days.
-The selected sample dates have no gazetted Delhi public holiday; the official 2026 gazette lists Dussehra on 20 October.
+Stops are graph nodes. Directed consecutive-stop edges on representative GTFS
+shapes are ride edges, and stops within 500 m are connected by walk edges.
+Walking speed is assumed to be 4.5 km/h. A* search uses `(stop, route)` state
+and limits exploration to a corridor at least 3 km wide (or 15% of direct
+distance) around the origin-destination line; this speeds search but may miss
+routes with larger detours. The planner adds a five-minute assumed wait at each
+boarding and a five-minute transfer penalty only as a route-search weight when
+the route changes. The transfer penalty is not included in reported travel
+minutes.
 
-## Validation
+Reported `minutes` is in-vehicle time plus walking time. The assumed boarding
+wait is shown separately and also provided as
+`including_wait_estimate_minutes`. Coordinate origins and destinations use
+nearby stops within 500 m; access and egress walking are included. For a stop
+name, all exact-name matches are considered first; otherwise literal,
+case-insensitive substring matches are used.
 
-The accuracy results below are leave-one-day-out held-out results. Each October day is excluded from model training, then tested only with that held-out day.
+Dwell time is included in stop-to-stop segment time. It is not separated from
+moving time because the stop-passage interpolation does not reliably identify
+individual dwell intervals, and the resulting stretch estimate is intended to
+represent passenger in-vehicle time.
 
-### Held-out segment validation
+## Live data
 
-The combined 25,000-segment sample reported MAE 49.26 seconds, MAPE 36.81%, and RMSE 147.28 seconds:
+The planner optionally polls Delhi OTD's GTFS-Realtime `VehiclePositions.pb`
+feed every 30 seconds. Access requires a registered OTD API key, supplied as
+`DELHI_OTD_RT_API_KEY` and sent as the `key` query parameter to
+`https://otd.delhi.gov.in/api/realtime/VehiclePositions.pb` by default. The URL
+can be overridden with `DELHI_OTD_RT_URL`. The key is never returned by the
+API. `/live-status` exposes polling state, and `/live-vehicles` returns fresh
+vehicle coordinates restricted to the requested map bounds. The Leaflet page
+refreshes visible vehicle markers every 30 seconds.
 
-| Held-out day | MAE (seconds) | MAPE | RMSE (seconds) |
-|---|---:|---:|---:|
-| 2026-10-07 | 45.71 | 37.65% | 122.64 |
-| 2026-10-14 | 46.75 | 38.00% | 139.02 |
-| 2026-10-15 | 46.12 | 36.16% | 125.61 |
-| 2026-10-17 | 61.62 | 36.61% | 198.86 |
-| 2026-10-18 | 46.10 | 35.62% | 136.98 |
+Vehicle speeds are computed from successive positions for the same vehicle and
+route, not from the feed's optional speed field. Samples with gaps outside
+10–120 seconds, displacement under 20 m, or computed speed outside 0.5–80 km/h
+are rejected. A route needs at least three samples from the preceding three
+minutes. Its median live speed is compared with that route's historical
+day/hour speed. The ratio is bounded to 0.6–1.4, blended at 50% for the first
+stretch, and decays exponentially with distance along the journey (5 km decay
+scale). This is a coarse route-level blend, not a bus-to-stop arrival model.
 
-Machine-readable results are in `validation_loo_segments.csv`.
+Blending is limited to departures within 15 minutes of the current time. If
+the feed is unconfigured, stale, or has insufficient samples for a route, the
+historical estimate is unchanged. The quieter-hour comparison remains
+historical-only because current live traffic does not describe that hour. The
+feed and live blending were observed with the user's locally configured key;
+the key is not stored in the repository. Without that runtime key, the planner
+uses historical estimates and the live-vehicle endpoint returns no positions.
 
-### Held-out journey validation
+## Limitations
 
-The script samples up to 300 qualifying observed trips from each held-out day. The observed journey time is the sum of held-out GPS segment times for each sampled trip.
-
-| Split | Observations | MAE (seconds) | Median absolute % error |
-|---|---:|---:|---:|
-| Overall | 1499 | 610.40 | 15.32% |
-| Peak | 732 | 661.51 | 15.76% |
-| Off-peak | 767 | 561.62 | 14.72% |
-| Weekday | 900 | 444.65 | 11.44% |
-| Saturday | 299 | 1030.03 | 28.12% |
-| Sunday | 300 | 689.42 | 19.61% |
-
-Machine-readable results are in `validation_journey.csv`.
-
-### Fallback use
-
-The held-out segment sample used exact-hour observations for 54.67%, nearby-hour observations for 4.88%, route-wide averages for 0.20%, and stop-distance/free-flow estimates for 40.26%. Held-out journey segments used exact hour 51.23%, nearby hours 6.09%, route-wide 0.29%, and free-flow 42.39%. Counts and percentages are in `validation_fallbacks.csv`.
+- Static GTFS is from 2024, while GPS observations are from October 2026.
+- The model uses five days from one month. There is one Saturday and one Sunday.
+- Held-out weekend folds use the other weekend day type as a labelled proxy;
+  they do not represent a separately learned weekend model.
+- About 10% of trips were skipped because no shape was within 50 m median
+  distance or too few pings were on-route.
+- A representative stop sequence is selected from the longest trip per shape;
+  short-turn trips may serve fewer stops.
+- Observed validation times use this same GPS processing pipeline. Dropped
+  segments can make the retained observations optimistic.
+- Journey-window validation measures in-vehicle stretch time only, not planner
+  walking, waiting, or transfer time.
+- Boarding wait is a fixed assumption, not derived from service headways.

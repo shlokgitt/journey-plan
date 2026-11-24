@@ -1,0 +1,8 @@
+duckdb
+fastapi
+gtfs-realtime-bindings
+numpy
+pandas
+pyarrow
+scipy
+uvicorn

@@ -1,0 +1,163 @@
+{
+    "from":  "Kashmere Gate ISBT",
+    "to":  "Nehru Place",
+    "depart":  "2026-10-13T23:00:00+05:30",
+    "timezone":  "Asia/Kolkata",
+    "total_time_definition":  "minutes/total_minutes = ride time + walking time. Boarding wait is reported separately; including_wait_estimate_minutes adds it. Transfer penalties affect route search only.",
+    "live_feed":  {
+                      "enabled":  false,
+                      "state":  "disabled",
+                      "last_poll_at":  null,
+                      "last_success_at":  null,
+                      "vehicles_seen":  0,
+                      "routes_with_speed_estimates":  0,
+                      "error":  null
+                  },
+    "options":  [
+                    {
+                        "legs":  [
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "ISBT Kashmere Gate Terminal",
+                                         "route_id":  "1914",
+                                         "route_short_name":  "419UP",
+                                         "alight_stop":  "Pant Nagar",
+                                         "ride_minutes":  26.06,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "exact_hour":  18,
+                                                                "route_wide":  3
+                                                            }
+                                     },
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "Pant Nagar",
+                                         "route_id":  "1950",
+                                         "route_short_name":  "445UP",
+                                         "alight_stop":  "Nehru Place",
+                                         "ride_minutes":  9.641,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "route_wide":  7
+                                                            }
+                                     }
+                                 ],
+                        "minutes":  35.701,
+                        "ride_minutes":  35.701,
+                        "walk_minutes":  0,
+                        "wait_estimate_minutes":  10.0,
+                        "wait_estimate_label":  "Estimated 5 minutes per boarding",
+                        "ride_and_walk_minutes":  35.701,
+                        "total_minutes":  35.701,
+                        "including_wait_estimate_minutes":  45.701,
+                        "transfer_count":  1,
+                        "transfer_stops":  [
+                                               "Pant Nagar"
+                                           ],
+                        "fallback_usage":  {
+                                               "exact_hour":  18,
+                                               "route_wide":  10
+                                           },
+                        "live_blend_usage":  {
+                                                 "segments_adjusted":  0,
+                                                 "routes":  [
+
+                                                            ]
+                                             },
+                        "quieter_hour_comparison":  {
+                                                        "label":  "14:00 IST (off-peak)",
+                                                        "depart":  "2026-10-13T14:00:00+05:30",
+                                                        "ride_minutes":  61.651,
+                                                        "walk_minutes":  0,
+                                                        "wait_estimate_minutes":  10.0,
+                                                        "minutes":  61.651,
+                                                        "total_minutes":  61.651,
+                                                        "including_wait_estimate_minutes":  71.651,
+                                                        "fallback_usage":  {
+                                                                               "nearby_hours":  18,
+                                                                               "route_wide":  10
+                                                                           },
+                                                        "live_blend_usage":  {
+                                                                                 "segments_adjusted":  0,
+                                                                                 "routes":  [
+
+                                                                                            ]
+                                                                             }
+                                                    }
+                    },
+                    {
+                        "legs":  [
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "ISBT Kashmere Gate Terminal",
+                                         "route_id":  "1914",
+                                         "route_short_name":  "419UP",
+                                         "alight_stop":  "Central School (MCKR)",
+                                         "ride_minutes":  30.22,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "exact_hour":  21,
+                                                                "route_wide":  3
+                                                            }
+                                     },
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "Central School (MCKR)",
+                                         "route_id":  "1920",
+                                         "route_short_name":  "425UP",
+                                         "alight_stop":  "Nehru Place",
+                                         "ride_minutes":  7.896,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "nearby_hours":  4
+                                                            }
+                                     }
+                                 ],
+                        "minutes":  38.116,
+                        "ride_minutes":  38.116,
+                        "walk_minutes":  0,
+                        "wait_estimate_minutes":  10.0,
+                        "wait_estimate_label":  "Estimated 5 minutes per boarding",
+                        "ride_and_walk_minutes":  38.116,
+                        "total_minutes":  38.116,
+                        "including_wait_estimate_minutes":  48.116,
+                        "transfer_count":  1,
+                        "transfer_stops":  [
+                                               "Central School (MCKR)"
+                                           ],
+                        "fallback_usage":  {
+                                               "exact_hour":  21,
+                                               "nearby_hours":  4,
+                                               "route_wide":  3
+                                           },
+                        "live_blend_usage":  {
+                                                 "segments_adjusted":  0,
+                                                 "routes":  [
+
+                                                            ]
+                                             },
+                        "quieter_hour_comparison":  {
+                                                        "label":  "14:00 IST (off-peak)",
+                                                        "depart":  "2026-10-13T14:00:00+05:30",
+                                                        "ride_minutes":  63.612,
+                                                        "walk_minutes":  0,
+                                                        "wait_estimate_minutes":  10.0,
+                                                        "minutes":  63.612,
+                                                        "total_minutes":  63.612,
+                                                        "including_wait_estimate_minutes":  73.612,
+                                                        "fallback_usage":  {
+                                                                               "exact_hour":  1,
+                                                                               "nearby_hours":  24,
+                                                                               "route_wide":  3
+                                                                           },
+                                                        "live_blend_usage":  {
+                                                                                 "segments_adjusted":  0,
+                                                                                 "routes":  [
+
+                                                                                            ]
+                                                                             }
+                                                    }
+                    }
+                ],
+    "query_seconds":  3.398
+}

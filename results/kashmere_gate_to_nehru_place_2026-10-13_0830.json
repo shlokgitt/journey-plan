@@ -1,0 +1,159 @@
+{
+    "from":  "Kashmere Gate ISBT",
+    "to":  "Nehru Place",
+    "depart":  "2026-10-13T08:30:00+05:30",
+    "timezone":  "Asia/Kolkata",
+    "total_time_definition":  "minutes/total_minutes = ride time + walking time. Boarding wait is reported separately; including_wait_estimate_minutes adds it. Transfer penalties affect route search only.",
+    "live_feed":  {
+                      "enabled":  false,
+                      "state":  "disabled",
+                      "last_poll_at":  null,
+                      "last_success_at":  null,
+                      "vehicles_seen":  0,
+                      "routes_with_speed_estimates":  0,
+                      "error":  null
+                  },
+    "options":  [
+                    {
+                        "legs":  [
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "GGS University ISBT Kashmere Gate",
+                                         "route_id":  "3488",
+                                         "route_short_name":  "72UP",
+                                         "alight_stop":  "GOLCHA CINEMA",
+                                         "ride_minutes":  4.06,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "route_wide":  4
+                                                            }
+                                     },
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "GOLCHA CINEMA",
+                                         "route_id":  "1920",
+                                         "route_short_name":  "425UP",
+                                         "alight_stop":  "Nehru Place",
+                                         "ride_minutes":  37.28,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "exact_hour":  19
+                                                            }
+                                     }
+                                 ],
+                        "minutes":  41.34,
+                        "ride_minutes":  41.34,
+                        "walk_minutes":  0,
+                        "wait_estimate_minutes":  10.0,
+                        "wait_estimate_label":  "Estimated 5 minutes per boarding",
+                        "ride_and_walk_minutes":  41.34,
+                        "total_minutes":  41.34,
+                        "including_wait_estimate_minutes":  51.34,
+                        "transfer_count":  1,
+                        "transfer_stops":  [
+                                               "GOLCHA CINEMA"
+                                           ],
+                        "fallback_usage":  {
+                                               "exact_hour":  19,
+                                               "route_wide":  4
+                                           },
+                        "live_blend_usage":  {
+                                                 "segments_adjusted":  0,
+                                                 "routes":  [
+
+                                                            ]
+                                             },
+                        "quieter_hour_comparison":  {
+                                                        "label":  "14:00 IST (off-peak)",
+                                                        "depart":  "2026-10-13T14:00:00+05:30",
+                                                        "ride_minutes":  48.795,
+                                                        "walk_minutes":  0,
+                                                        "wait_estimate_minutes":  10.0,
+                                                        "minutes":  48.795,
+                                                        "total_minutes":  48.795,
+                                                        "including_wait_estimate_minutes":  58.795,
+                                                        "fallback_usage":  {
+                                                                               "nearby_hours":  19,
+                                                                               "route_wide":  4
+                                                                           },
+                                                        "live_blend_usage":  {
+                                                                                 "segments_adjusted":  0,
+                                                                                 "routes":  [
+
+                                                                                            ]
+                                                                             }
+                                                    }
+                    },
+                    {
+                        "legs":  [
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "GGS University ISBT Kashmere Gate",
+                                         "route_id":  "1908",
+                                         "route_short_name":  "411UP",
+                                         "alight_stop":  "Delhi Public School",
+                                         "ride_minutes":  25.163,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "exact_hour":  16
+                                                            }
+                                     },
+                                     {
+                                         "type":  "ride",
+                                         "board_stop":  "Delhi Public School",
+                                         "route_id":  "1950",
+                                         "route_short_name":  "445UP",
+                                         "alight_stop":  "Nehru Place",
+                                         "ride_minutes":  16.256,
+                                         "boarding_wait_minutes":  5.0,
+                                         "fallback_usage":  {
+                                                                "route_wide":  10
+                                                            }
+                                     }
+                                 ],
+                        "minutes":  41.419,
+                        "ride_minutes":  41.419,
+                        "walk_minutes":  0,
+                        "wait_estimate_minutes":  10.0,
+                        "wait_estimate_label":  "Estimated 5 minutes per boarding",
+                        "ride_and_walk_minutes":  41.419,
+                        "total_minutes":  41.419,
+                        "including_wait_estimate_minutes":  51.419,
+                        "transfer_count":  1,
+                        "transfer_stops":  [
+                                               "Delhi Public School"
+                                           ],
+                        "fallback_usage":  {
+                                               "exact_hour":  16,
+                                               "route_wide":  10
+                                           },
+                        "live_blend_usage":  {
+                                                 "segments_adjusted":  0,
+                                                 "routes":  [
+
+                                                            ]
+                                             },
+                        "quieter_hour_comparison":  {
+                                                        "label":  "14:00 IST (off-peak)",
+                                                        "depart":  "2026-10-13T14:00:00+05:30",
+                                                        "ride_minutes":  66.703,
+                                                        "walk_minutes":  0,
+                                                        "wait_estimate_minutes":  10.0,
+                                                        "minutes":  66.703,
+                                                        "total_minutes":  66.703,
+                                                        "including_wait_estimate_minutes":  76.703,
+                                                        "fallback_usage":  {
+                                                                               "nearby_hours":  16,
+                                                                               "route_wide":  10
+                                                                           },
+                                                        "live_blend_usage":  {
+                                                                                 "segments_adjusted":  0,
+                                                                                 "routes":  [
+
+                                                                                            ]
+                                                                             }
+                                                    }
+                    }
+                ],
+    "query_seconds":  3.691
+}
