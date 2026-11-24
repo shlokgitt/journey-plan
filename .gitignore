@@ -1,0 +1,10 @@
+*.db
+day_*.parquet
+segments_*.parquet
+*.parquet
+*.7z
+*.zip
+__pycache__/
+.venv/
+gtfs/__MACOSX/
+gtfs/stop_times.txt

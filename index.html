@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delhi Bus Journey Planner</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #map { height: 65vh; }
+    .controls { padding: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+    input, button { font-size: 16px; padding: 8px; }
+    #result { padding: 12px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <select id="from">
+      <option value="">Select starting stop</option>
+    </select>
+    <select id="to">
+      <option value="">Select destination stop</option>
+    </select>
+    <input id="depart" type="datetime-local">
+    <button onclick="plan()">Plan journey</button>
+  </div>
+  <div id="map"></div>
+  <pre id="result"></pre>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([28.6139, 77.2090], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    async function loadStops() {
+      const data = await fetch('/stops').then(r => r.json());
+      for (const selectId of ['from', 'to']) {
+        const select = document.querySelector('#' + selectId);
+        for (const stop of data.stops) {
+          const option = document.createElement('option');
+          option.value = stop.stop_id;
+          option.textContent = `${stop.stop_name} (${stop.stop_id})`;
+          select.appendChild(option);
+        }
+      }
+    }
+
+    async function plan() {
+      if (!document.querySelector('#from').value || !document.querySelector('#to').value) {
+        document.querySelector('#result').textContent = 'Please select both a starting stop and a destination stop.';
+        return;
+      }
+      const params = new URLSearchParams({
+        from: document.querySelector('#from').value,
+        to: document.querySelector('#to').value,
+        depart: document.querySelector('#depart').value
+      });
+      const response = await fetch('/journeys?' + params);
+      const data = await response.json();
+      document.querySelector('#result').textContent = JSON.stringify(data, null, 2);
+      if (!response.ok) return;
+      const stops = await fetch('/stops').then(r => r.ok ? r.json() : {stops: []});
+      map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+      for (const stopId of [data.options[0].stops[0], data.options[0].stops.at(-1)]) {
+        const s = stops.stops.find(x => String(x.stop_id) === String(stopId));
+        if (s) L.marker([s.stop_lat, s.stop_lon]).addTo(map);
+      }
+    }
+
+    loadStops();
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+scope,fallback,count,percent
+held_out_segments,exact_hour,13667,54.668000000000006
+held_out_segments,nearby_hours,1219,4.8759999999999994
+held_out_segments,route_wide,50,0.2
+held_out_segments,freeflow,10064,40.256
+held_out_journey,exact_hour,17625,51.22504141599094
+held_out_journey,nearby_hours,2097,6.094690034004708
+held_out_journey,route_wide,100,0.2906385328566861
+held_out_journey,freeflow,14585,42.389630017147674
