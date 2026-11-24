@@ -178,6 +178,7 @@
     }
     .find-button:hover { color: var(--primary); background: var(--background); }
     .field-help { min-height: 17px; margin: 8px 4px 0; color: var(--on-surface-muted); font-size: 12px; line-height: 1.33; }
+    .field-help.error { color: var(--tertiary); }
     .plan-button {
       min-height: 52px;
       padding: 0 24px;
@@ -467,8 +468,8 @@
         </div>
         <div class="field">
           <label for="depart">Departure time (IST)</label>
-          <input id="depart" name="depart" type="datetime-local">
-          <p class="field-help">Times without a timezone are treated as India time.</p>
+          <input id="depart" name="depart" type="datetime-local" aria-describedby="depart-help">
+          <p class="field-help" id="depart-help">Choose now or a future time (IST).</p>
         </div>
         <button class="plan-button" id="plan-button" type="submit">Find journeys</button>
       </div>
@@ -986,12 +987,9 @@
       }
     }
 
-    document.getElementById('journey-form').addEventListener('submit', event => {
-      event.preventDefault();
-      plan();
-    });
-
-    const istNow = new Intl.DateTimeFormat('sv-SE', {
+    const departureInput = document.getElementById('depart');
+    const departureHelp = document.getElementById('depart-help');
+    const departureFormatter = new Intl.DateTimeFormat('sv-SE', {
       timeZone: 'Asia/Kolkata',
       year: 'numeric',
       month: '2-digit',
@@ -999,8 +997,40 @@
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23'
-    }).format(new Date());
-    document.getElementById('depart').value = istNow.replace(' ', 'T');
+    });
+
+    function currentIstInputValue() {
+      return departureFormatter.format(new Date()).replace(' ', 'T');
+    }
+
+    function validateDepartureTime() {
+      const currentIst = currentIstInputValue();
+      departureInput.min = currentIst;
+      const isPast = Boolean(departureInput.value && departureInput.value < currentIst);
+      departureInput.setCustomValidity(isPast ? 'Choose a departure time that is now or in the future.' : '');
+      departureInput.setAttribute('aria-invalid', String(isPast));
+      departureHelp.textContent = isPast
+        ? 'That time has already passed. Choose now or a future time (IST).'
+        : 'Choose now or a future time (IST).';
+      departureHelp.classList.toggle('error', isPast);
+      return !isPast;
+    }
+
+    departureInput.addEventListener('input', validateDepartureTime);
+    departureInput.addEventListener('change', validateDepartureTime);
+
+    document.getElementById('journey-form').addEventListener('submit', event => {
+      event.preventDefault();
+      if (!validateDepartureTime()) {
+        departureInput.reportValidity();
+        return;
+      }
+      plan();
+    });
+
+    departureInput.value = currentIstInputValue();
+    validateDepartureTime();
+    setInterval(validateDepartureTime, 15000);
 
     stopsPromise = loadStops();
     stopsPromise.catch(error => {
